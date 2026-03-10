@@ -13,10 +13,10 @@ venv/
 env/
 ENV/
 .venv
-.cursor/
 
 # IDE
 .vscode/
+.cursor/
 .idea/
 *.swp
 *.swo
@@ -35,5 +35,3 @@ datasets/
 exports/
 pandasai.log
 
-# Prompting
-AGENTS.md
