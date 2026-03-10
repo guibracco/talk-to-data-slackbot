@@ -13,4 +13,8 @@
 ## Agent Instructions
 - Runs `pytest -q` after changes and share results.
 - Confirm before installing new dependencies.
+- Use Poetry for dependency management.
 - Never write secrets, always use environment variables.
+- IMPORTANT: Always use PandasAI v3 (pandasai >= 3.0.0) functions and conventions.
+- Check official PandasAI v3 docs before writing or modifying any PandasAI code.
+- Use a framework like LangGraph if needed for orchestration.
