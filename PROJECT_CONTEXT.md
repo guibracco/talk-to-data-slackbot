@@ -22,6 +22,7 @@ The **Talk-to-Data Slackbot** is a conversational AI agent that lets team member
 **Out of scope:**
 
 - Owning or operating the external database; the database is an external dependency.
+- User authentication/authorization aside from what Slack and the hosting environment provide.
 - General-purpose chat beyond data-related questions (unless explicitly extended later).
 
 ---
