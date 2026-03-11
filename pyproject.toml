@@ -12,6 +12,8 @@ dependencies = [
     "pandasai-litellm",
     "pandasai-sql[postgres]",
     "python-dotenv>=1.0.0",
+    "slack-bolt>=1.18.0",
+    "slack-sdk>=3.26.0",
 ]
 
 [project.optional-dependencies]
