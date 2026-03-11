@@ -9,6 +9,7 @@ readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "pandasai>=3.0.0",
+    "pandasai-litellm",
     "pandasai-sql[postgres]",
     "python-dotenv>=1.0.0",
 ]
