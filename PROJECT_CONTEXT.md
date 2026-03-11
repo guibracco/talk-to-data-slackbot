@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-The **Talk-to-Data Slackbot** is a conversational AI agent that lets team members ask data-related questions in Slack and receive verified, analyzed answers—including text, tables, and diagrams or graphs—directly in chat. It consults an external database, reasons over the data, and returns responses that are accurate and safe to share.
+The **Talk-to-Data Slackbot** is a conversational AI agent that lets team members ask data-related questions in Slack and receive verified, analyzed answers — including text, tables, and diagrams or graphs — directly in chat. It consults an external database, reasons over the data, and returns responses that are accurate and safe to share.
 
 **Why it exists:** It enables analysts, product managers, marketers, and other non-technical users to get instant insights from internal data without writing SQL or opening dashboards.
 
@@ -26,19 +26,32 @@ The **Talk-to-Data Slackbot** is a conversational AI agent that lets team member
 
 ---
 
+## Data Sources
+
+PostgreSQL database with 4 tables:
+
+- `users` — stores information about individual users (user_id, signup_date, country, device_type).
+- `subscriptions` — tracks user subscriptions to different plans (subscription_id, user_id, plan, status, start_date, end_date).
+- `payments` — logs all payment transactions for subscriptions (payment_id, subscription_id, payment_date, amount_usd, method).
+- `sessions` — logs user activity sessions (session_id, user_id, session_date, duration_minutes, activity_type).
+
+---
+
 ## Architecture Summary
 
 The system is the **Talk-to-Data Slackbot**. It interacts with two **external environments**: **Slack** (user interface) and a **Database** (data source).
 
 The bot is organized into five **subsystems**:
 
-| Subsystem        | Role |
-|------------------|------|
-| **Input**        | Receives the question from Slack, parses it, and applies input guardrails. Exchanges context with Memory for conversation state. Sends a parsed request to the Engine. |
-| **Memory**       | Stores and retrieves conversational context so the agent can handle follow-ups and clarifications. |
-| **Engine**       | **Planner** decides which data to investigate and the execution strategy; **Reasoner** analyzes data and produces the answer. Both use the Semantic Layer for schema and data access; Planner can update Memory with context. |
-| **Semantic Layer** | Holds metadata (tables, relationships, join logic) and bridges the Engine and the Database so the Engine can work in conceptual terms rather than raw SQL. |
-| **Output**       | Receives the analysis from the Reasoner, applies output guardrails, then formats the answer for Slack (text, tables, diagrams/graphs) and posts it to the user. |
+
+| Subsystem          | Role                                                                                                                                                                                                                          |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Input**          | Receives the question from Slack, parses it, and applies input guardrails. Exchanges context with Memory for conversation state. Sends a parsed request to the Engine.                                                        |
+| **Memory**         | Stores and retrieves conversational context so the agent can handle follow-ups and clarifications.                                                                                                                            |
+| **Engine**         | **Planner** decides which data to investigate and the execution strategy; **Reasoner** analyzes data and produces the answer. Both use the Semantic Layer for schema and data access; Planner can update Memory with context. |
+| **Semantic Layer** | Holds metadata (tables, relationships, join logic) and bridges the Engine and the Database so the Engine can work in conceptual terms rather than raw SQL.                                                                    |
+| **Output**         | Receives the analysis from the Reasoner, applies output guardrails, then formats the answer for Slack (text, tables, diagrams/graphs) and posts it to the user.                                                               |
+
 
 **Flow:** Question → Input (parse, guardrails, context) → Engine (plan, reason, via Semantic Layer ↔ Database) → Output (guardrails, format) → Answer back to Slack.
 
@@ -46,10 +59,12 @@ The bot is organized into five **subsystems**:
 
 ## Key Inputs and Outputs
 
-| Direction | What | Where |
-|-----------|------|--------|
-| **In**    | User question (natural language) | From Slack into the Input subsystem |
+
+| Direction | What                                          | Where                               |
+| --------- | --------------------------------------------- | ----------------------------------- |
+| **In**    | User question (natural language)              | From Slack into the Input subsystem |
 | **Out**   | Answer (text, tables, and/or diagrams/graphs) | From Output subsystem back to Slack |
+
 
 Internal flows: parsed request (Input → Engine), context (Input ↔ Memory, Planner → Memory), schema/data queries (Engine ↔ Semantic Layer ↔ Database), and analysis (Reasoner → Output).
 
