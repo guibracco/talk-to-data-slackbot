@@ -2,6 +2,8 @@
 
 A Slack bot that lets you ask natural-language questions about internal data (Postgres) and get answers directly in Slack. Powered by [PandasAI](https://docs.pandas-ai.com/) and OpenAI. No SQL or dashboards required.
 
+![System Design](design/agent_design.png)
+
 ## Features
 
 - **Ask in Slack**: Mention the bot in a channel or send a DM; ask questions in plain language.
@@ -74,7 +76,7 @@ If your question is vague or off-topic, the bot asks for clarification. If it co
 - **Engine** (`talk_to_data_slackbot/engine/`) — PandasAI Agent; `chat` and `follow_up` for answering questions.
 - **Semantic Layer** (`talk_to_data_slackbot/semantic_layer/`) — Postgres connection, table metadata (`TABLE_SOURCES`), `get_data_sources()` for the Agent.
 - **Output** (`talk_to_data_slackbot/output/`) — Output guardrails (PII redaction), formatter, Slack posting (text and optional file).
-- **Memory** — Conversation context per thread (in-memory agent cache in `main.py`).
+- **Memory** — Conversation context per thread (in-memory agent cache via PandasAI Agent).
 - **Main** (`talk_to_data_slackbot/main.py`) — Bolt app, Socket Mode, message handler: Input → guardrails → pipeline or guardrail response → Output.
 
 ## Testing
