@@ -15,7 +15,7 @@ import pandasai as pai
 def _get_semantic_layer_organization() -> str:
     """Organization name for PandasAI datasets; from SEMANTIC_LAYER_ORGANIZATION env, default 'organization'."""
     load_dotenv()
-    return os.environ.get("SEMANTIC_LAYER_ORGANIZATION", "organization")
+    return (os.environ.get("SEMANTIC_LAYER_ORGANIZATION") or "organization").strip() or "organization"
 
 
 def _semantic_layer_organization_path() -> str:
