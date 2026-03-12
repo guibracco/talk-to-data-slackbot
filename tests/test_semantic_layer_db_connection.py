@@ -77,18 +77,29 @@ class TestGetDataSources:
         assert mock_pai.create.call_count == 4
 
     def test_calls_create_with_correct_path_and_table_for_each(self, minimal_env):
-        """Each pai.create call uses path company/<table> and matching table name."""
+        """Each pai.create call uses path <organization>/<table> (default organization) and matching table name."""
         with patch.dict(os.environ, minimal_env, clear=False):
             with patch("talk_to_data_slackbot.semantic_layer.db_connection.pai") as mock_pai:
                 mock_pai.create.side_effect = lambda **kwargs: object()
                 get_data_sources()
         calls = mock_pai.create.call_args_list
         for i, (table_name, _) in enumerate(TABLE_SOURCES):
-            assert calls[i].kwargs["path"] == f"company/{table_name}"
+            assert calls[i].kwargs["path"] == f"organization/{table_name}"
             assert calls[i].kwargs["source"]["table"] == table_name
             assert calls[i].kwargs["source"]["type"] == "postgres"
             assert calls[i].kwargs["source"]["connection"]["host"] == "localhost"
             assert calls[i].kwargs["source"]["connection"]["database"] == "testdb"
+
+    def test_calls_create_with_path_from_semantic_layer_organization_env(self, minimal_env):
+        """When SEMANTIC_LAYER_ORGANIZATION is set, pai.create path uses that value."""
+        minimal_env["SEMANTIC_LAYER_ORGANIZATION"] = "myorg"
+        with patch.dict(os.environ, minimal_env, clear=False):
+            with patch("talk_to_data_slackbot.semantic_layer.db_connection.pai") as mock_pai:
+                mock_pai.create.side_effect = lambda **kwargs: object()
+                get_data_sources()
+        calls = mock_pai.create.call_args_list
+        for i, (table_name, _) in enumerate(TABLE_SOURCES):
+            assert calls[i].kwargs["path"] == f"myorg/{table_name}"
 
     def test_second_call_returns_cached_sources_without_calling_create(self, minimal_env):
         """Second get_data_sources() returns cache; pai.create is not called again."""

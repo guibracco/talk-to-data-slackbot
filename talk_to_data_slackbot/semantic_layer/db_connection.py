@@ -12,9 +12,15 @@ from typing import Any
 from dotenv import load_dotenv
 import pandasai as pai
 
-def _semantic_layer_company_path() -> str:
-    """Path where PandasAI persists company/ datasets (so we can clear it after restart)."""
-    return os.path.join(os.getcwd(), "datasets", "company")
+def _get_semantic_layer_organization() -> str:
+    """Organization name for PandasAI datasets; from SEMANTIC_LAYER_ORGANIZATION env, default 'organization'."""
+    load_dotenv()
+    return os.environ.get("SEMANTIC_LAYER_ORGANIZATION", "organization")
+
+
+def _semantic_layer_organization_path() -> str:
+    """Path where PandasAI persists organization/ datasets (so we can clear it after restart)."""
+    return os.path.join(os.getcwd(), "datasets", _get_semantic_layer_organization())
 
 
 # Table metadata: path suffix, description (for semantic layer).
@@ -97,16 +103,17 @@ def get_data_sources() -> list[Any]:
     global _cached_sources
     if _cached_sources is not None:
         return _cached_sources
-    # Remove persisted "company" datasets from a previous process so pai.create() can run again.
-    company_path = _semantic_layer_company_path()
-    if os.path.isdir(company_path):
-        shutil.rmtree(company_path, ignore_errors=True)
+    # Remove persisted organization datasets from a previous process so pai.create() can run again.
+    org_path = _semantic_layer_organization_path()
+    if os.path.isdir(org_path):
+        shutil.rmtree(org_path, ignore_errors=True)
     load_dotenv()
     connection = _get_connection_config()
+    organization = _get_semantic_layer_organization()
     sources = []
     for table_name, description in TABLE_SOURCES:
         df = pai.create(
-            path=f"company/{table_name}",
+            path=f"{organization}/{table_name}",
             description=description,
             source={
                 "type": "postgres",
