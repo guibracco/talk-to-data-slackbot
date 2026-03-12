@@ -5,6 +5,11 @@ Starts the Slack Bolt app in Socket Mode: on app_mention or DM message,
 runs the pipeline (Engine + Output guardrails + formatter) and posts the reply.
 """
 
+# Use non-GUI backend before any chart code runs (Bolt handlers run in worker threads;
+# macOS requires NSWindow on the main thread, so GUI backends would crash).
+import matplotlib
+matplotlib.use("Agg")
+
 import os
 from typing import Any
 
@@ -14,24 +19,34 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from talk_to_data_slackbot.engine import answer_question
 from talk_to_data_slackbot.input import extract_question_from_event
-from talk_to_data_slackbot.output import apply_output_guardrails, format_for_slack
+from talk_to_data_slackbot.output import prepare_slack_response
 
 
-def _run_pipeline(question: str) -> str:
-    """Get answer, apply guardrails, format for Slack."""
+def _run_pipeline(question: str) -> tuple[str | None, str | None]:
+    """Get answer, prepare for Slack. Returns (text, file_path)."""
     if not question.strip():
-        return "Please ask a data-related question."
+        return ("Please ask a data-related question.", None)
     response = answer_question(question)
-    safe = apply_output_guardrails(str(response))
-    return format_for_slack(safe)
+    return prepare_slack_response(response)
 
 
-def _handle_message(event: dict[str, Any], say: Any) -> None:
-    """Process one message: extract question, run pipeline, reply."""
+def _handle_message(event: dict[str, Any], say: Any, client: Any) -> None:
+    """Process one message: extract question, run pipeline, post text or upload chart."""
     question = extract_question_from_event(event)
-    formatted = _run_pipeline(question)
+    text, file_path = _run_pipeline(question)
+    channel = event["channel"]
     thread_ts = event.get("thread_ts") or event.get("ts")
-    say(text=formatted, thread_ts=thread_ts)
+
+    if file_path:
+        client.files_upload_v2(
+            channel=channel,
+            thread_ts=thread_ts,
+            file=file_path,
+            title="Chart",
+            initial_comment=text or "Here's your chart.",
+        )
+    else:
+        say(text=text or "No response.", thread_ts=thread_ts)
 
 
 def main() -> None:
@@ -44,11 +59,11 @@ def main() -> None:
     app = App(token=token)
 
     @app.event("app_mention")
-    def on_app_mention(event: dict[str, Any], say: Any) -> None:
-        _handle_message(event, say)
+    def on_app_mention(event: dict[str, Any], say: Any, client: Any) -> None:
+        _handle_message(event, say, client)
 
     @app.event("message")
-    def on_message(event: dict[str, Any], say: Any) -> None:
+    def on_message(event: dict[str, Any], say: Any, client: Any) -> None:
         # Only respond to DMs (channel_type im); ignore bot messages and subtypes
         if event.get("channel_type") != "im":
             return
@@ -56,7 +71,7 @@ def main() -> None:
             return
         if event.get("subtype"):
             return
-        _handle_message(event, say)
+        _handle_message(event, say, client)
 
     handler = SocketModeHandler(app, app_token)
     handler.start()
