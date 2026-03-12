@@ -18,7 +18,11 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from talk_to_data_slackbot.engine import create_agent
-from talk_to_data_slackbot.input import extract_question_from_event, get_conversation_key
+from talk_to_data_slackbot.input import (
+    apply_input_guardrails,
+    extract_question_from_event,
+    get_conversation_key,
+)
 from talk_to_data_slackbot.output import post_to_slack, prepare_slack_response
 
 # Per-thread agent cache: (channel_id, thread_ts) -> Agent for follow-up context.
@@ -41,9 +45,13 @@ def _run_pipeline(
 
 
 def _handle_message(event: dict[str, Any], say: Any, client: Any) -> None:
-    """Process one message: parse input, run pipeline, post via Output."""
+    """Process one message: parse input, apply guardrails, run pipeline or post guardrail response."""
     question = extract_question_from_event(event)
     channel_id, thread_ts = get_conversation_key(event)
+    proceed, guardrail_response = apply_input_guardrails(question)
+    if not proceed:
+        post_to_slack(guardrail_response, None, channel_id, thread_ts, say, client)
+        return
     text, file_path = _run_pipeline(question, channel_id, thread_ts)
     post_to_slack(text, file_path, channel_id, thread_ts, say, client)
 
