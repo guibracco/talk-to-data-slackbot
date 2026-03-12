@@ -18,7 +18,7 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from talk_to_data_slackbot.engine import create_agent
-from talk_to_data_slackbot.input import extract_question_from_event
+from talk_to_data_slackbot.input import extract_question_from_event, get_conversation_key
 from talk_to_data_slackbot.output import prepare_slack_response
 
 # Per-thread agent cache: (channel_id, thread_ts) -> Agent for follow-up context.
@@ -41,24 +41,21 @@ def _run_pipeline(
 
 
 def _handle_message(event: dict[str, Any], say: Any, client: Any) -> None:
-    """Process one message: extract question, run pipeline, post text or upload chart."""
+    """Process one message: parse input, run pipeline, post text or upload chart."""
     question = extract_question_from_event(event)
-    channel = event["channel"]
-    thread_ts = event.get("thread_ts") or event.get("ts")
-    # Ensure thread_ts is string for cache key and API
-    thread_ts_str = str(thread_ts)
-    text, file_path = _run_pipeline(question, channel, thread_ts_str)
+    channel_id, thread_ts = get_conversation_key(event)
+    text, file_path = _run_pipeline(question, channel_id, thread_ts)
 
     if file_path:
         client.files_upload_v2(
-            channel=channel,
-            thread_ts=thread_ts_str,
+            channel=channel_id,
+            thread_ts=thread_ts,
             file=file_path,
             title="Chart",
             initial_comment=text or "Here's your chart.",
         )
     else:
-        say(text=text or "No response.", thread_ts=thread_ts_str)
+        say(text=text or "No response.", thread_ts=thread_ts)
 
 
 def main() -> None:
