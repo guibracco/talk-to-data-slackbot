@@ -17,36 +17,48 @@ from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from talk_to_data_slackbot.engine import answer_question
+from talk_to_data_slackbot.engine import create_agent
 from talk_to_data_slackbot.input import extract_question_from_event
 from talk_to_data_slackbot.output import prepare_slack_response
 
+# Per-thread agent cache: (channel_id, thread_ts) -> Agent for follow-up context.
+_thread_agents: dict[tuple[str, str], Any] = {}
 
-def _run_pipeline(question: str) -> tuple[str | None, str | None]:
-    """Get answer, prepare for Slack. Returns (text, file_path)."""
+
+def _run_pipeline(
+    question: str, channel_id: str, thread_ts: str
+) -> tuple[str | None, str | None]:
+    """Get answer (chat or follow_up), prepare for Slack. Returns (text, file_path)."""
     if not question.strip():
         return ("Please ask a data-related question.", None)
-    response = answer_question(question)
+    key = (channel_id, thread_ts)
+    if key not in _thread_agents:
+        _thread_agents[key] = create_agent()
+        response = _thread_agents[key].chat(question)
+    else:
+        response = _thread_agents[key].follow_up(question)
     return prepare_slack_response(response)
 
 
 def _handle_message(event: dict[str, Any], say: Any, client: Any) -> None:
     """Process one message: extract question, run pipeline, post text or upload chart."""
     question = extract_question_from_event(event)
-    text, file_path = _run_pipeline(question)
     channel = event["channel"]
     thread_ts = event.get("thread_ts") or event.get("ts")
+    # Ensure thread_ts is string for cache key and API
+    thread_ts_str = str(thread_ts)
+    text, file_path = _run_pipeline(question, channel, thread_ts_str)
 
     if file_path:
         client.files_upload_v2(
             channel=channel,
-            thread_ts=thread_ts,
+            thread_ts=thread_ts_str,
             file=file_path,
             title="Chart",
             initial_comment=text or "Here's your chart.",
         )
     else:
-        say(text=text or "No response.", thread_ts=thread_ts)
+        say(text=text or "No response.", thread_ts=thread_ts_str)
 
 
 def main() -> None:
