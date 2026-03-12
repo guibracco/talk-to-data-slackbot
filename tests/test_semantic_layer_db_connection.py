@@ -7,6 +7,7 @@ import pytest
 
 from talk_to_data_slackbot.semantic_layer.db_connection import (
     TABLE_SOURCES,
+    clear_data_sources_cache,
     get_data_sources,
     _get_connection_config,
 )
@@ -59,6 +60,13 @@ class TestGetDataSources:
             "DB_PASS": "testpass",
         }
 
+    @pytest.fixture(autouse=True)
+    def clear_cache(self):
+        """Reset data sources cache so each test gets fresh pai.create calls."""
+        clear_data_sources_cache()
+        yield
+        clear_data_sources_cache()
+
     def test_returns_four_sources(self, minimal_env):
         """get_data_sources returns one source per table (4 total)."""
         with patch.dict(os.environ, minimal_env, clear=False):
@@ -81,3 +89,13 @@ class TestGetDataSources:
             assert calls[i].kwargs["source"]["type"] == "postgres"
             assert calls[i].kwargs["source"]["connection"]["host"] == "localhost"
             assert calls[i].kwargs["source"]["connection"]["database"] == "testdb"
+
+    def test_second_call_returns_cached_sources_without_calling_create(self, minimal_env):
+        """Second get_data_sources() returns cache; pai.create is not called again."""
+        with patch.dict(os.environ, minimal_env, clear=False):
+            with patch("talk_to_data_slackbot.semantic_layer.db_connection.pai") as mock_pai:
+                mock_pai.create.side_effect = lambda **kwargs: object()
+                first = get_data_sources()
+                second = get_data_sources()
+        assert first is second
+        assert mock_pai.create.call_count == 4
