@@ -6,10 +6,15 @@ Credentials are read from the environment (e.g. .env via python-dotenv).
 """
 
 import os
+import shutil
 from typing import Any
 
 from dotenv import load_dotenv
 import pandasai as pai
+
+def _semantic_layer_company_path() -> str:
+    """Path where PandasAI persists company/ datasets (so we can clear it after restart)."""
+    return os.path.join(os.getcwd(), "datasets", "company")
 
 
 # Table metadata: path suffix, description (for semantic layer).
@@ -55,13 +60,28 @@ def _get_connection_config() -> dict[str, Any]:
     }
 
 
+# Cache so pai.create() is only called once per process (avoids "Dataset already exists").
+_cached_sources: list[Any] | None = None
+
+
+def clear_data_sources_cache() -> None:
+    """
+    Clear the cached data sources (for tests or process restart).
+
+    After calling this, the next get_data_sources() will call pai.create() again.
+    """
+    global _cached_sources
+    _cached_sources = None
+
+
 def get_data_sources() -> list[Any]:
     """
     Create and return semantic-layer data sources for all Postgres tables.
 
-    Reads DB_* from the environment, calls pandasai.create() for each table
-    (users, subscriptions, payments, sessions), and returns the list of
-    created objects for use by the Engine (e.g. Agent(sources)).
+    On first call, reads DB_* from the environment, calls pandasai.create()
+    for each table (users, subscriptions, payments, sessions), caches the
+    result, and returns it. Subsequent calls return the cached list so
+    pai.create() is not run again (PandasAI raises if a path already exists).
 
     Returns
     -------
@@ -74,6 +94,13 @@ def get_data_sources() -> list[Any]:
     KeyError
         If any required env var (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS) is missing.
     """
+    global _cached_sources
+    if _cached_sources is not None:
+        return _cached_sources
+    # Remove persisted "company" datasets from a previous process so pai.create() can run again.
+    company_path = _semantic_layer_company_path()
+    if os.path.isdir(company_path):
+        shutil.rmtree(company_path, ignore_errors=True)
     load_dotenv()
     connection = _get_connection_config()
     sources = []
@@ -88,4 +115,5 @@ def get_data_sources() -> list[Any]:
             },
         )
         sources.append(df)
+    _cached_sources = sources
     return sources
