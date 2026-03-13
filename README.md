@@ -10,9 +10,8 @@ A Slack bot that lets you ask natural-language questions about internal data (Po
 - **Queryable data**: Answers are based on tables exposed by the semantic layer (users, subscriptions, payments, sessions).
 - **Follow-up context**: Questions in the same thread keep conversation context for multi-turn queries.
 - **Input guardrails**:
-  - Blocks questions containing PII (e.g. email, phone); asks the user to rephrase.
-  - Answers “what data is available?” (and similar) with a static list of tables and short descriptions—no LLM call.
-  - Asks for clarification when the question is too vague or out of scope.
+  - **Scope and intent**: A single LLM call classifies each question — is it about the available data (scope)? Is the user asking to retrieve PII from the data (intent)? Out-of-scope questions get a clarification and optional reframing hint; PII-seeking questions are refused with a clear reason. Questions that merely mention PII (e.g. “subscription for john@example.com”) are allowed when the intent is not to list or export PII.
+  - **“What data is available?”**: Answered with a static list of tables and descriptions (no LLM).
 - **Output**: Slack-friendly formatting, optional file upload (e.g. charts); output guardrails redact PII from responses before posting.
 
 ## Requirements
@@ -68,16 +67,24 @@ The app uses **Slack Socket Mode**, so no public URL is required for receiving e
 - “What’s the total revenue by plan?”
 - “What data can I query?” — returns a list of available tables and descriptions.
 
-If your question is vague or off-topic, the bot asks for clarification. If it contains personal or sensitive information (e.g. email, phone), the bot asks you to rephrase without PII.
+If your question is vague or off-topic, the bot asks for clarification (sometimes with a reframing hint). If you ask to retrieve personal or sensitive data (e.g. “list all user emails”), the bot refuses and suggests aggregated or non-PII questions instead.
 
 ## Project structure
 
-- **Input** (`talk_to_data_slackbot/input/`) — Parse Slack events (question, conversation key); input guardrails (PII block, “what data available”, vague/out-of-scope).
-- **Engine** (`talk_to_data_slackbot/engine/`) — PandasAI Agent; `chat` and `follow_up` for answering questions.
+- **Input** (`talk_to_data_slackbot/input/`) — Parse Slack events (question, conversation key); input guardrails: meta “what data available” (static), then scope and PII-intent via LLM classifier (`classify_question_scope_and_pii`).
+- **LLM** (`talk_to_data_slackbot/llm.py`) — Shared config and completion: `get_model_and_api_key()`, `completion(messages)`. Used by the engine (PandasAI) and by the input guardrails classifier so env and model live in one place.
+- **Engine** (`talk_to_data_slackbot/engine/`) — PandasAI Agent; `chat` and `follow_up` for answering questions. Uses shared LLM config.
 - **Semantic Layer** (`talk_to_data_slackbot/semantic_layer/`) — Postgres connection, table metadata (`TABLE_SOURCES`), `get_data_sources()` for the Agent.
 - **Output** (`talk_to_data_slackbot/output/`) — Output guardrails (PII redaction), formatter, Slack posting (text and optional file).
 - **Memory** — Conversation context per thread (in-memory agent cache via PandasAI Agent).
 - **Main** (`talk_to_data_slackbot/main.py`) — Bolt app, Socket Mode, message handler: Input → guardrails → pipeline or guardrail response → Output.
+
+### Input guardrails: design choices
+
+- **Why an LLM for scope and PII intent?** Heuristics (length, keywords, blocklists) were too brittle and blocked valid questions. The LLM judges whether the question is about the available data and whether the user is asking to retrieve PII (e.g. “list all emails”) vs. aggregated analytics. That keeps the bot usable while still refusing PII-seeking requests.
+- **Shared LLM module:** The engine and the guardrails both use `talk_to_data_slackbot.llm` for model and API key. One place to change env or provider; the guardrail is just another consumer of `completion()`.
+- **Fail-open:** If the classifier call fails (network, parse error), the bot proceeds to the main pipeline instead of blocking. Availability is preferred; the main engine and output guardrails still apply.
+- **“What data is available?”** stays heuristic + static response so we don’t spend an LLM call on a simple meta question.
 
 ## Testing
 
