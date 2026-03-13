@@ -2,7 +2,7 @@
 
 A Slack bot that lets you ask natural-language questions about internal data (Postgres) and get answers directly in Slack. Powered by [PandasAI](https://docs.pandas-ai.com/) and OpenAI. No SQL or dashboards required.
 
-![System Design](design/agent_design.png)
+System Design
 
 ## Features
 
@@ -10,7 +10,7 @@ A Slack bot that lets you ask natural-language questions about internal data (Po
 - **Queryable data**: Answers are based on tables exposed by the semantic layer (users, subscriptions, payments, sessions).
 - **Follow-up context**: Questions in the same thread keep conversation context for multi-turn queries.
 - **Input guardrails**:
-  - **Scope and intent**: A single LLM call classifies each question — is it about the available data (scope)? Is the user asking to retrieve PII from the data (intent)? Out-of-scope questions get a clarification and optional reframing hint; PII-seeking questions are refused with a clear reason. Questions that merely mention PII (e.g. “subscription for john@example.com”) are allowed when the intent is not to list or export PII.
+  - **Scope and intent**: A single LLM call classifies each question — is it about the available data (scope)? Is the user asking to retrieve PII from the data (intent)? Out-of-scope questions get a clarification and optional reframing hint; PII-seeking questions are refused with a clear reason. Questions that merely mention PII (e.g. “subscription for [john@example.com](mailto:john@example.com)”) are allowed when the intent is not to list or export PII.
   - **“What data is available?”**: Answered with a static list of tables and descriptions (no LLM).
 - **Output**: Slack-friendly formatting, optional file upload (e.g. charts); output guardrails redact PII from responses before posting.
 
@@ -70,6 +70,52 @@ The app uses **Slack Socket Mode**, so no public URL is required for receiving e
 If your question is vague or off-topic, the bot asks for clarification (sometimes with a reframing hint). If you ask to retrieve personal or sensitive data (e.g. “list all user emails”), the bot refuses and suggests aggregated or non-PII questions instead.
 
 ## Project structure
+
+```
+talk-to-data-slackbot/
+│
+├── pyproject.toml          # Poetry config (dependencies, Python version)
+├── AGENTS.md               # evelopment rules
+├── PROJECT_CONTEXT.md      # Project scope and goals
+├── .env.example            # Template for env vars (copy to .env)
+├── .gitignore              # Ignore .env, venv, __pycache__, datasets, etc.
+├── README.md
+│
+├── design/                 # System design (diagram, summary)
+│   ├── agent_design.excalidraw
+│   └── agent_design.png
+│
+├── talk_to_data_slackbot/  # Main package
+│   ├── __init__.py
+│   ├── main.py             # Entry point: Bolt app, Socket Mode, message handler
+│   ├── llm.py              # Shared LLM config and completion (engine + guardrails)
+│   ├── input/              # Parse Slack events; input guardrails (meta, scope, PII intent)
+│   │   ├── __init__.py
+│   │   ├── slack_handler.py
+│   │   └── guardrails.py
+│   ├── engine/             # PandasAI Agent (chat, follow_up)
+│   │   ├── __init__.py
+│   │   └── agent.py
+│   ├── semantic_layer/     # Postgres connection, TABLE_SOURCES, get_data_sources()
+│   │   ├── __init__.py
+│   │   └── db_connection.py
+│   ├── output/             # Output guardrails, formatter, Slack posting
+│   │   ├── __init__.py
+│   │   ├── guardrails.py
+│   │   ├── slack_formatter.py
+│   │   └── slack_poster.py
+│   └── memory/             # Placeholder (conversation context is handled by PandasAI Agent)
+│       └── __init__.py
+│
+└── tests/
+    ├── test_input_guardrails.py
+    ├── test_input_slack_handler.py
+    ├── test_engine_agent.py
+    ├── test_output_guardrails.py
+    ├── test_output_slack_formatter.py
+    ├── test_output_slack_poster.py
+    └── test_semantic_layer_db_connection.py
+```
 
 - **Input** (`talk_to_data_slackbot/input/`) — Parse Slack events (question, conversation key); input guardrails: meta “what data available” (static), then scope and PII-intent via LLM classifier (`classify_question_scope_and_pii`).
 - **LLM** (`talk_to_data_slackbot/llm.py`) — Shared config and completion: `get_model_and_api_key()`, `completion(messages)`. Used by the engine (PandasAI) and by the input guardrails classifier so env and model live in one place.
