@@ -1,30 +1,25 @@
 """
 Minimal PandasAI Agent for the Engine.
 
-Configures the LLM from environment, creates an Agent from Semantic Layer
+Configures the LLM from shared config, creates an Agent from Semantic Layer
 data sources, and exposes create_agent() and answer_question() as entry points.
 """
 
-import os
 from typing import Any
 
-from dotenv import load_dotenv
 import pandasai as pai
 from pandasai import Agent
 from pandasai_litellm.litellm import LiteLLM
 
+from talk_to_data_slackbot.llm import get_model_and_api_key
 from talk_to_data_slackbot.semantic_layer import get_data_sources
 
 
 def _configure_llm() -> None:
     """
-    Load .env and set PandasAI global LLM from OPENAI_API_KEY and OPENAI_MODEL.
-
-    Uses OPENAI_MODEL default "gpt-4o-mini" when unset (e.g. in tests).
+    Set PandasAI global LLM using shared model and API key (OPENAI_* env).
     """
-    load_dotenv()
-    api_key = os.environ.get("OPENAI_API_KEY", "")
-    model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+    model, api_key = get_model_and_api_key()
     llm = LiteLLM(model=model, api_key=api_key)
     pai.config.set({"llm": llm})
 
