@@ -41,6 +41,13 @@ class TestApplyOutputGuardrails:
         result = apply_output_guardrails(content)
         assert result == content
 
+    def test_decimal_numbers_not_redacted(self):
+        """Numeric answers (e.g. averages) must not be matched as phone numbers."""
+        content = "The average payment amount is 13.627419866708982."
+        result = apply_output_guardrails(content)
+        assert result == content
+        assert REDACTED_PLACEHOLDER not in result
+
     def test_multiple_pii_all_redacted(self):
         """Multiple PII occurrences are all redacted."""
         content = "Email alice@test.com and bob@test.org; call 555-111-2222."

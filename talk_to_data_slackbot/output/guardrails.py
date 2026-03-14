@@ -21,16 +21,17 @@ _PII_PATTERNS: list[tuple[Pattern[str], str]] = [
         REDACTED_PLACEHOLDER,
     ),
     # Phone: international (+1 555 123 4567), US (555) 123-4567, 555-123-4567, 5551234567
+    # Lookbehind/lookahead: not after digit (avoids decimals); not before digit (word boundary).
     (
         re.compile(
-            r"\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}",
+            r"(?<!\d)\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}(?!\d)",
         ),
         REDACTED_PLACEHOLDER,
     ),
     # Phone: longer international (e.g. +44 20 7123 4567)
     (
         re.compile(
-            r"\+\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}",
+            r"\+\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}(?!\d)",
         ),
         REDACTED_PLACEHOLDER,
     ),
