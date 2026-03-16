@@ -52,6 +52,7 @@ def _handle_message(event: dict[str, Any], say: Any, client: Any) -> None:
     if not proceed:
         post_to_slack(guardrail_response, None, channel_id, thread_ts, say, client)
         return
+    post_to_slack("Thinking...", None, channel_id, thread_ts, say, client)
     text, file_path = _run_pipeline(question, channel_id, thread_ts)
     post_to_slack(text, file_path, channel_id, thread_ts, say, client)
 
