@@ -56,6 +56,26 @@ poetry run python -m talk_to_data_slackbot.main
 
 The app uses **Slack Socket Mode**, so no public URL is required for receiving events.
 
+### Running with Docker
+
+Build the image:
+
+```bash
+docker build -t talk-to-data-slackbot .
+```
+
+Run the container with env vars from a file (do not commit `.env`; use `.env.example` as a template):
+
+```bash
+docker run --env-file .env talk-to-data-slackbot
+```
+
+Or pass variables explicitly: `docker run -e SLACK_BOT_TOKEN=... -e SLACK_APP_TOKEN=... -e OPENAI_API_KEY=... -e DB_HOST=... talk-to-data-slackbot`
+
+The container must be able to reach **Slack** (outbound) and **Postgres** (e.g. set `DB_HOST` to the host or another container’s service name). For a local Postgres in another container, use Docker networking (e.g. `--network host` or a shared network and `DB_HOST=postgres`).
+
+**Docker Compose (optional):** To run the bot and a local Postgres together, copy `.env.example` to `.env`, set `DB_HOST=postgres` (or leave the compose file to override it), and run `docker-compose up --build`. The `bot` service uses the Postgres service name as `DB_HOST`.
+
 ## Usage in Slack
 
 - **Channels**: Mention the bot and ask a data question in the same message. You can send follow-up questions in the thread.
@@ -79,6 +99,9 @@ talk-to-data-slackbot/
 ├── PROJECT_CONTEXT.md      # Project scope and goals
 ├── .env.example            # Template for env vars (copy to .env)
 ├── .gitignore              # Ignore .env, venv, __pycache__, datasets, etc.
+├── .dockerignore           # Docker build context exclusions
+├── Dockerfile              # Multi-stage build (Poetry → pip, python -m main)
+├── docker-compose.yml      # Optional: bot + Postgres for local dev
 ├── README.md
 │
 ├── design/                 # System design (diagram, summary)
