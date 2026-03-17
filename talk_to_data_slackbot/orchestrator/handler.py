@@ -14,7 +14,7 @@ from talk_to_data_slackbot.input import (
     get_conversation_key,
 )
 from talk_to_data_slackbot.output import post_to_slack
-from talk_to_data_slackbot.pipeline import run_pipeline
+from talk_to_data_slackbot.orchestrator.pipeline import run_pipeline
 
 
 def handle_message(event: dict[str, Any], say: Any, client: Any) -> None:

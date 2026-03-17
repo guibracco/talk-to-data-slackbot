@@ -127,9 +127,11 @@ talk-to-data-slackbot/
 │   │   ├── guardrails.py
 │   │   ├── slack_formatter.py
 │   │   └── slack_poster.py
-│   ├── pipeline.py         # Agent cache + run_pipeline (engine + prepare response)
-│   ├── handler.py          # handle_message: parse, guardrails, thinking, pipeline, post
-│   └── memory/             # Reserved for conversation/memory; context is in-memory in pipeline
+│   ├── orchestrator/       # Composes message flow: handler + pipeline
+│   │   ├── __init__.py
+│   │   ├── handler.py      # handle_message: parse, guardrails, thinking, pipeline, post
+│   │   └── pipeline.py     # Agent cache + run_pipeline (engine + prepare response)
+│   └── memory/             # Reserved for conversation/memory; context is in-memory in orchestrator pipeline
 │       └── __init__.py
 │
 └── tests/
@@ -147,10 +149,9 @@ talk-to-data-slackbot/
 - **Engine** (`talk_to_data_slackbot/engine/`) — PandasAI Agent; `chat` and `follow_up` for answering questions. Uses shared LLM config.
 - **Semantic Layer** (`talk_to_data_slackbot/semantic_layer/`) — Postgres connection, table metadata (`TABLE_SOURCES`), `get_data_sources()` for the Agent.
 - **Output** (`talk_to_data_slackbot/output/`) — Output guardrails (PII redaction), formatter, Slack posting (text and optional file).
-- **Pipeline** (`talk_to_data_slackbot/pipeline.py`) — In-memory agent cache (per channel/thread) and `run_pipeline(question, channel_id, thread_ts)` → (text, file_path).
-- **Handler** (`talk_to_data_slackbot/handler.py`) — `handle_message(event, say, client)`: parse, input guardrails, post “Thinking…”, run pipeline, post result (or guardrail response).
-- **Memory** (`talk_to_data_slackbot/memory/`) — Reserved for future conversation/memory abstraction; context is currently in-memory in the pipeline.
-- **Main** (`talk_to_data_slackbot/main.py`) — Bolt app, Socket Mode, event registration (handler.handle_message), start.
+- **Orchestrator** (`talk_to_data_slackbot/orchestrator/`) — Composes the message flow: handler (`handle_message`) parses the event, applies input guardrails, posts "Thinking…", runs the pipeline, then posts the result; pipeline holds the per-thread agent cache and `run_pipeline(question, channel_id, thread_ts)` (engine + response formatting).
+- **Memory** (`talk_to_data_slackbot/memory/`) — Reserved for future conversation/memory abstraction; context is currently in-memory in the orchestrator's pipeline.
+- **Main** (`talk_to_data_slackbot/main.py`) — Bolt app, Socket Mode, event registration (orchestrator's handle_message), start.
 
 ### Input guardrails: design choices
 

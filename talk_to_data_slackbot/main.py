@@ -2,7 +2,7 @@
 Talk-to-Data Slackbot entry point.
 
 Starts the Slack Bolt app in Socket Mode: on app_mention or DM message,
-delegates to handler.handle_message (parse → guardrails → pipeline → post).
+delegates to orchestrator (handle_message) for parse → guardrails → pipeline → post.
 """
 
 # Use non-GUI backend before any chart code runs (Bolt handlers run in worker threads;
@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from talk_to_data_slackbot.handler import handle_message
+from talk_to_data_slackbot.orchestrator import handle_message
 
 
 def main() -> None:
