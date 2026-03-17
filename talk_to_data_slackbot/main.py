@@ -2,7 +2,7 @@
 Talk-to-Data Slackbot entry point.
 
 Starts the Slack Bolt app in Socket Mode: on app_mention or DM message,
-runs the pipeline (Engine + Output guardrails + formatter) and posts the reply.
+delegates to handler.handle_message (parse → guardrails → pipeline → post).
 """
 
 # Use non-GUI backend before any chart code runs (Bolt handlers run in worker threads;
@@ -17,44 +17,7 @@ from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from talk_to_data_slackbot.engine import create_agent
-from talk_to_data_slackbot.input import (
-    apply_input_guardrails,
-    extract_question_from_event,
-    get_conversation_key,
-)
-from talk_to_data_slackbot.output import post_to_slack, prepare_slack_response
-
-# Per-thread agent cache: (channel_id, thread_ts) -> Agent for follow-up context.
-_thread_agents: dict[tuple[str, str], Any] = {}
-
-
-def _run_pipeline(
-    question: str, channel_id: str, thread_ts: str
-) -> tuple[str | None, str | None]:
-    """Get answer (chat or follow_up), prepare for Slack. Returns (text, file_path)."""
-    if not question.strip():
-        return ("Please ask a data-related question.", None)
-    key = (channel_id, thread_ts)
-    if key not in _thread_agents:
-        _thread_agents[key] = create_agent()
-        response = _thread_agents[key].chat(question)
-    else:
-        response = _thread_agents[key].follow_up(question)
-    return prepare_slack_response(response)
-
-
-def _handle_message(event: dict[str, Any], say: Any, client: Any) -> None:
-    """Process one message: parse input, apply guardrails, run pipeline or post guardrail response."""
-    question = extract_question_from_event(event)
-    channel_id, thread_ts = get_conversation_key(event)
-    proceed, guardrail_response = apply_input_guardrails(question)
-    if not proceed:
-        post_to_slack(guardrail_response, None, channel_id, thread_ts, say, client)
-        return
-    post_to_slack("Thinking...", None, channel_id, thread_ts, say, client)
-    text, file_path = _run_pipeline(question, channel_id, thread_ts)
-    post_to_slack(text, file_path, channel_id, thread_ts, say, client)
+from talk_to_data_slackbot.handler import handle_message
 
 
 def main() -> None:
@@ -68,7 +31,7 @@ def main() -> None:
 
     @app.event("app_mention")
     def on_app_mention(event: dict[str, Any], say: Any, client: Any) -> None:
-        _handle_message(event, say, client)
+        handle_message(event, say, client)
 
     @app.event("message")
     def on_message(event: dict[str, Any], say: Any, client: Any) -> None:
@@ -79,7 +42,7 @@ def main() -> None:
             return
         if event.get("subtype"):
             return
-        _handle_message(event, say, client)
+        handle_message(event, say, client)
 
     handler = SocketModeHandler(app, app_token)
     handler.start()

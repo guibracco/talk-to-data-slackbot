@@ -127,7 +127,9 @@ talk-to-data-slackbot/
 │   │   ├── guardrails.py
 │   │   ├── slack_formatter.py
 │   │   └── slack_poster.py
-│   └── memory/             # Placeholder (conversation context is handled by PandasAI Agent)
+│   ├── pipeline.py         # Agent cache + run_pipeline (engine + prepare response)
+│   ├── handler.py          # handle_message: parse, guardrails, thinking, pipeline, post
+│   └── memory/             # Reserved for conversation/memory; context is in-memory in pipeline
 │       └── __init__.py
 │
 └── tests/
@@ -145,8 +147,10 @@ talk-to-data-slackbot/
 - **Engine** (`talk_to_data_slackbot/engine/`) — PandasAI Agent; `chat` and `follow_up` for answering questions. Uses shared LLM config.
 - **Semantic Layer** (`talk_to_data_slackbot/semantic_layer/`) — Postgres connection, table metadata (`TABLE_SOURCES`), `get_data_sources()` for the Agent.
 - **Output** (`talk_to_data_slackbot/output/`) — Output guardrails (PII redaction), formatter, Slack posting (text and optional file).
-- **Memory** — Conversation context per thread (in-memory agent cache via PandasAI Agent).
-- **Main** (`talk_to_data_slackbot/main.py`) — Bolt app, Socket Mode, message handler: Input → guardrails → pipeline or guardrail response → Output.
+- **Pipeline** (`talk_to_data_slackbot/pipeline.py`) — In-memory agent cache (per channel/thread) and `run_pipeline(question, channel_id, thread_ts)` → (text, file_path).
+- **Handler** (`talk_to_data_slackbot/handler.py`) — `handle_message(event, say, client)`: parse, input guardrails, post “Thinking…”, run pipeline, post result (or guardrail response).
+- **Memory** (`talk_to_data_slackbot/memory/`) — Reserved for future conversation/memory abstraction; context is currently in-memory in the pipeline.
+- **Main** (`talk_to_data_slackbot/main.py`) — Bolt app, Socket Mode, event registration (handler.handle_message), start.
 
 ### Input guardrails: design choices
 
