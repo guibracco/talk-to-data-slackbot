@@ -1,0 +1,46 @@
+# Version control and env
+.git/
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE and tooling
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Runtime-generated (PandasAI)
+datasets/
+exports/
+pandasai.log
+
+# Docs and design (shrink image)
+design/
+*.md
+!README.md
+
+# Tests (run on host/CI)
+tests/
+
+# OS
+.DS_Store
+Thumbs.db
