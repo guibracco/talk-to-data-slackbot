@@ -2,7 +2,7 @@
 
 A Slack bot that lets you ask natural-language questions about internal data (Postgres) and get answers directly in Slack. Powered by [PandasAI](https://docs.pandas-ai.com/) and OpenAI. No SQL or dashboards required.
 
-System Design
+![System Design](design/agent_design.png)
 
 ## Features
 
