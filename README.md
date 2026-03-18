@@ -141,7 +141,11 @@ talk-to-data-slackbot/
     ├── test_output_guardrails.py
     ├── test_output_slack_formatter.py
     ├── test_output_slack_poster.py
-    └── test_semantic_layer_db_connection.py
+    ├── test_semantic_layer_db_connection.py
+    ├── test_orchestrator_pipeline.py
+    ├── test_orchestrator_handler.py
+    ├── test_llm.py
+    └── test_main.py
 ```
 
 - **Input** (`talk_to_data_slackbot/input/`) — Parse Slack events (question, conversation key); input guardrails: meta “what data available” (static), then scope and PII-intent via LLM classifier (`classify_question_scope_and_pii`).
@@ -161,6 +165,8 @@ talk-to-data-slackbot/
 - **“What data is available?”** stays heuristic + static response so we don’t spend an LLM call on a simple meta question.
 
 ## Testing
+
+Tests map to subsystems as follows: **input** (`test_input_guardrails`, `test_input_slack_handler`), **engine** (`test_engine_agent`), **semantic layer** (`test_semantic_layer_db_connection`), **output** (`test_output_guardrails`, `test_output_slack_formatter`, `test_output_slack_poster`), **orchestrator** (`test_orchestrator_pipeline`, `test_orchestrator_handler`), **LLM** (`test_llm`), and **main** (`test_main`).
 
 Run tests:
 
