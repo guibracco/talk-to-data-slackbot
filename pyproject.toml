@@ -30,3 +30,10 @@ build-backend = "poetry.core.masonry.api"
 dev = [
     "pytest (>=9.0.2,<10.0.0)"
 ]
+
+# Matplotlib pulls pyparsing with deprecated API calls in _fontconfig_pattern.py;
+# warnings are upstream until matplotlib/pyparsing align.
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::pyparsing.warnings.PyparsingDeprecationWarning",
+]
